@@ -135,7 +135,7 @@ faceMesh.onResults((results) => {
 
     if (currentMode === 'necklace' && necklaceImg && chestSmooth && leftSmooth && rightSmooth) {
       const necklaceWidth = Math.abs(rightSmooth.x - leftSmooth.x) * 1.5;
-      const necklaceHeight = necklaceWidth * 0.65;
+      const necklaceHeight = necklaceWidth * 1;
       canvasCtx.drawImage(
         necklaceImg,
         chestSmooth.x - necklaceWidth / 2,
