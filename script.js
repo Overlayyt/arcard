@@ -122,7 +122,7 @@ faceMesh.onResults((results) => {
     }
 
     if (currentMode === 'necklace' && necklaceImg && chinSmooth) {
-      canvasCtx.drawImage(necklaceImg, chinSmooth.x - 160, chinSmooth.y, 400, 200);
+      canvasCtx.drawImage(necklaceImg, chinSmooth.x - 140, chinSmooth.y, 400, 200);
     }
   }
 });
@@ -158,7 +158,7 @@ function takeSnapshot() {
 
   if (currentMode === 'necklace' && necklaceImg) {
     const chinSmooth = smooth(chinPositions);
-    if (chinSmooth) ctx.drawImage(necklaceImg, chinSmooth.x - 160, chinSmooth.y, 400, 200);
+    if (chinSmooth) ctx.drawImage(necklaceImg, chinSmooth.x - 140, chinSmooth.y, 400, 200);
   }
 
   lastSnapshotDataURL = snapshotCanvas.toDataURL('image/png');
