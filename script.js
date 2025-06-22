@@ -180,7 +180,7 @@ function takeSnapshot() {
 
   if (currentMode === 'necklace' && necklaceImg && chestSmooth && leftSmooth && rightSmooth) {
     const necklaceWidth = Math.abs(rightSmooth.x - leftSmooth.x) * 1.5;
-    const necklaceHeight = necklaceWidth * 0.45;
+    const necklaceHeight = necklaceWidth * 1;
     ctx.drawImage(
       necklaceImg,
       chestSmooth.x - necklaceWidth / 2,
