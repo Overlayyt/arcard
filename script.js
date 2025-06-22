@@ -122,7 +122,7 @@ faceMesh.onResults((results) => {
     }
 
     if (currentMode === 'necklace' && necklaceImg && chinSmooth) {
-      canvasCtx.drawImage(necklaceImg, chinSmooth.x - 120, chinSmooth.y, 400, 200);
+      canvasCtx.drawImage(necklaceImg, chinSmooth.x - 100, chinSmooth.y, 300, 150);
     }
   }
 });
@@ -131,8 +131,8 @@ const camera = new Camera(videoElement, {
   onFrame: async () => {
     await faceMesh.send({ image: videoElement });
   },
-  width: 1080,
-  height: 1920,
+  width: 1280,
+  height: 720,
 });
 camera.start();
 
@@ -158,7 +158,7 @@ function takeSnapshot() {
 
   if (currentMode === 'necklace' && necklaceImg) {
     const chinSmooth = smooth(chinPositions);
-    if (chinSmooth) ctx.drawImage(necklaceImg, chinSmooth.x - 120, chinSmooth.y, 400, 200);
+    if (chinSmooth) ctx.drawImage(necklaceImg, chinSmooth.x - 100, chinSmooth.y, 300, 150);
   }
 
   lastSnapshotDataURL = snapshotCanvas.toDataURL('image/png');
