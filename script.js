@@ -5,11 +5,13 @@ const canvasCtx = canvasElement.getContext('2d');
 let currentMode = null;
 let earringImg = null;
 let necklaceImg = null;
+let earringSrc = '';
+let necklaceSrc = '';
 let lastSnapshotDataURL = '';
 
 let leftEarPositions = [];
 let rightEarPositions = [];
-let chestPositions = [];
+let chinPositions = [];
 
 function loadImage(src) {
   return new Promise((resolve) => {
@@ -21,20 +23,24 @@ function loadImage(src) {
 }
 
 function changeEarring(filename) {
-  loadImage(`earrings/${filename}`).then(img => {
+  earringSrc = `earrings/${filename}`;
+  loadImage(earringSrc).then(img => {
     if (img) earringImg = img;
   });
 }
 
 function changeNecklace(filename) {
-  loadImage(`necklaces/${filename}`).then(img => {
+  necklaceSrc = `necklaces/${filename}`;
+  loadImage(necklaceSrc).then(img => {
     if (img) necklaceImg = img;
   });
 }
 
 function selectMode(mode) {
   currentMode = mode;
+
   document.querySelectorAll('.options-group').forEach(group => group.style.display = 'none');
+
   if (mode) {
     document.getElementById(`${mode}-options`).style.display = 'flex';
   }
@@ -52,7 +58,7 @@ function insertJewelryOptions(type, containerId) {
     btn.appendChild(img);
     btn.onclick = () => {
       if (type === 'earring') changeEarring(filename);
-      else changeNecklace(filename);
+      if (type === 'necklace') changeNecklace(filename);
     };
     container.appendChild(btn);
   }
@@ -83,54 +89,41 @@ faceMesh.setOptions({
 faceMesh.onResults((results) => {
   canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-  if (results.multiFaceLandmarks.length === 0) return;
+  if (results.multiFaceLandmarks.length > 0) {
+    const landmarks = results.multiFaceLandmarks[0];
 
-  const landmarks = results.multiFaceLandmarks[0];
+    const left = {
+      x: landmarks[132].x * canvasElement.width,
+      y: landmarks[132].y * canvasElement.height - 20,
+    };
+    const right = {
+      x: landmarks[361].x * canvasElement.width,
+      y: landmarks[361].y * canvasElement.height - 20,
+    };
+    const chin = {
+      x: landmarks[152].x * canvasElement.width,
+      y: landmarks[152].y * canvasElement.height + 10,
+    };
 
-  const leftEar = {
-    x: landmarks[132].x * canvasElement.width,
-    y: landmarks[132].y * canvasElement.height,
-  };
-  const rightEar = {
-    x: landmarks[361].x * canvasElement.width,
-    y: landmarks[361].y * canvasElement.height,
-  };
+    leftEarPositions.push(left);
+    rightEarPositions.push(right);
+    chinPositions.push(chin);
+    if (leftEarPositions.length > 5) leftEarPositions.shift();
+    if (rightEarPositions.length > 5) rightEarPositions.shift();
+    if (chinPositions.length > 5) chinPositions.shift();
 
-  const leftShoulder = {
-    x: landmarks[234].x * canvasElement.width,
-    y: landmarks[234].y * canvasElement.height,
-  };
-  const rightShoulder = {
-    x: landmarks[454].x * canvasElement.width,
-    y: landmarks[454].y * canvasElement.height,
-  };
+    const leftSmooth = smooth(leftEarPositions);
+    const rightSmooth = smooth(rightEarPositions);
+    const chinSmooth = smooth(chinPositions);
 
-  const chestCenter = {
-    x: (leftShoulder.x + rightShoulder.x) / 2,
-    y: (leftShoulder.y + rightShoulder.y) / 2 + 50, // move necklace further down
-  };
+    if (currentMode === 'earring' && earringImg) {
+      if (leftSmooth) canvasCtx.drawImage(earringImg, leftSmooth.x - 60, leftSmooth.y, 100, 100);
+      if (rightSmooth) canvasCtx.drawImage(earringImg, rightSmooth.x - 20, rightSmooth.y, 100, 100);
+    }
 
-  leftEarPositions.push(leftEar);
-  rightEarPositions.push(rightEar);
-  chestPositions.push(chestCenter);
-
-  if (leftEarPositions.length > 5) leftEarPositions.shift();
-  if (rightEarPositions.length > 5) rightEarPositions.shift();
-  if (chestPositions.length > 5) chestPositions.shift();
-
-  const leftSmooth = smooth(leftEarPositions);
-  const rightSmooth = smooth(rightEarPositions);
-  const chestSmooth = smooth(chestPositions);
-
-  if (currentMode === 'earring' && earringImg) {
-    if (leftSmooth) canvasCtx.drawImage(earringImg, leftSmooth.x - 50, leftSmooth.y - 20, 100, 100);
-    if (rightSmooth) canvasCtx.drawImage(earringImg, rightSmooth.x - 50, rightSmooth.y - 20, 100, 100);
-  }
-
-  if (currentMode === 'necklace' && necklaceImg && chestSmooth && leftSmooth && rightSmooth) {
-    const necklaceWidth = Math.abs(rightSmooth.x - leftSmooth.x) * 1.5;
-    const necklaceHeight = necklaceWidth * 0.65;
-    canvasCtx.drawImage(necklaceImg, chestSmooth.x - necklaceWidth / 2, chestSmooth.y, necklaceWidth, necklaceHeight);
+    if (currentMode === 'necklace' && necklaceImg && chinSmooth) {
+      canvasCtx.drawImage(necklaceImg, chinSmooth.x - 100, chinSmooth.y, 300, 150);
+    }
   }
 });
 
@@ -156,19 +149,16 @@ function takeSnapshot() {
   snapshotCanvas.height = videoElement.videoHeight;
   ctx.drawImage(videoElement, 0, 0, snapshotCanvas.width, snapshotCanvas.height);
 
-  const leftSmooth = smooth(leftEarPositions);
-  const rightSmooth = smooth(rightEarPositions);
-  const chestSmooth = smooth(chestPositions);
-
   if (currentMode === 'earring' && earringImg) {
-    if (leftSmooth) ctx.drawImage(earringImg, leftSmooth.x - 50, leftSmooth.y - 20, 100, 100);
-    if (rightSmooth) ctx.drawImage(earringImg, rightSmooth.x - 50, rightSmooth.y - 20, 100, 100);
+    const leftSmooth = smooth(leftEarPositions);
+    const rightSmooth = smooth(rightEarPositions);
+    if (leftSmooth) ctx.drawImage(earringImg, leftSmooth.x - 60, leftSmooth.y, 100, 100);
+    if (rightSmooth) ctx.drawImage(earringImg, rightSmooth.x - 20, rightSmooth.y, 100, 100);
   }
 
-  if (currentMode === 'necklace' && necklaceImg && chestSmooth && leftSmooth && rightSmooth) {
-    const necklaceWidth = Math.abs(rightSmooth.x - leftSmooth.x) * 1.5;
-    const necklaceHeight = necklaceWidth * 0.65;
-    ctx.drawImage(necklaceImg, chestSmooth.x - necklaceWidth / 2, chestSmooth.y, necklaceWidth, necklaceHeight);
+  if (currentMode === 'necklace' && necklaceImg) {
+    const chinSmooth = smooth(chinPositions);
+    if (chinSmooth) ctx.drawImage(necklaceImg, chinSmooth.x - 100, chinSmooth.y, 300, 150);
   }
 
   lastSnapshotDataURL = snapshotCanvas.toDataURL('image/png');
@@ -209,5 +199,14 @@ function closeSnapshotModal() {
 
 function toggleInfoModal() {
   const modal = document.getElementById('info-modal');
+  modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
+}
+function toggleInfoModal() {
+  const modal = document.getElementById('info-modal');
+  modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
+}
+
+function toggleLocationModal() {
+  const modal = document.getElementById('location-modal');
   modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
 }
