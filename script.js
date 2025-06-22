@@ -38,9 +38,7 @@ function changeNecklace(filename) {
 
 function selectMode(mode) {
   currentMode = mode;
-
   document.querySelectorAll('.options-group').forEach(group => group.style.display = 'none');
-
   if (mode) {
     document.getElementById(`${mode}-options`).style.display = 'flex';
   }
@@ -100,14 +98,25 @@ faceMesh.onResults((results) => {
       x: landmarks[361].x * canvasElement.width,
       y: landmarks[361].y * canvasElement.height - 20,
     };
-    const chin = {
-      x: landmarks[152].x * canvasElement.width,
-      y: landmarks[152].y * canvasElement.height + 10,
+
+    const leftShoulder = {
+      x: landmarks[234].x * canvasElement.width,
+      y: landmarks[234].y * canvasElement.height,
+    };
+    const rightShoulder = {
+      x: landmarks[454].x * canvasElement.width,
+      y: landmarks[454].y * canvasElement.height,
+    };
+
+    const necklaceCenter = {
+      x: (leftShoulder.x + rightShoulder.x) / 2,
+      y: (leftShoulder.y + rightShoulder.y) / 2 + 30,
     };
 
     leftEarPositions.push(left);
     rightEarPositions.push(right);
-    chinPositions.push(chin);
+    chinPositions.push(necklaceCenter);
+
     if (leftEarPositions.length > 5) leftEarPositions.shift();
     if (rightEarPositions.length > 5) rightEarPositions.shift();
     if (chinPositions.length > 5) chinPositions.shift();
@@ -121,8 +130,10 @@ faceMesh.onResults((results) => {
       if (rightSmooth) canvasCtx.drawImage(earringImg, rightSmooth.x - 20, rightSmooth.y, 100, 100);
     }
 
-    if (currentMode === 'necklace' && necklaceImg && chinSmooth) {
-      canvasCtx.drawImage(necklaceImg, chinSmooth.x - 100, chinSmooth.y, 300, 150);
+    if (currentMode === 'necklace' && necklaceImg && chinSmooth && leftSmooth && rightSmooth) {
+      const necklaceWidth = Math.abs(rightSmooth.x - leftSmooth.x) * 1.2;
+      const necklaceHeight = necklaceWidth * 0.6;
+      canvasCtx.drawImage(necklaceImg, chinSmooth.x - necklaceWidth / 2, chinSmooth.y, necklaceWidth, necklaceHeight);
     }
   }
 });
@@ -149,16 +160,19 @@ function takeSnapshot() {
   snapshotCanvas.height = videoElement.videoHeight;
   ctx.drawImage(videoElement, 0, 0, snapshotCanvas.width, snapshotCanvas.height);
 
+  const leftSmooth = smooth(leftEarPositions);
+  const rightSmooth = smooth(rightEarPositions);
+  const chinSmooth = smooth(chinPositions);
+
   if (currentMode === 'earring' && earringImg) {
-    const leftSmooth = smooth(leftEarPositions);
-    const rightSmooth = smooth(rightEarPositions);
     if (leftSmooth) ctx.drawImage(earringImg, leftSmooth.x - 60, leftSmooth.y, 100, 100);
     if (rightSmooth) ctx.drawImage(earringImg, rightSmooth.x - 20, rightSmooth.y, 100, 100);
   }
 
-  if (currentMode === 'necklace' && necklaceImg) {
-    const chinSmooth = smooth(chinPositions);
-    if (chinSmooth) ctx.drawImage(necklaceImg, chinSmooth.x - 100, chinSmooth.y, 300, 150);
+  if (currentMode === 'necklace' && necklaceImg && leftSmooth && rightSmooth && chinSmooth) {
+    const necklaceWidth = Math.abs(rightSmooth.x - leftSmooth.x) * 1.2;
+    const necklaceHeight = necklaceWidth * 0.6;
+    ctx.drawImage(necklaceImg, chinSmooth.x - necklaceWidth / 2, chinSmooth.y, necklaceWidth, necklaceHeight);
   }
 
   lastSnapshotDataURL = snapshotCanvas.toDataURL('image/png');
@@ -197,10 +211,6 @@ function closeSnapshotModal() {
   document.getElementById('snapshot-modal').style.display = 'none';
 }
 
-function toggleInfoModal() {
-  const modal = document.getElementById('info-modal');
-  modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
-}
 function toggleInfoModal() {
   const modal = document.getElementById('info-modal');
   modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
