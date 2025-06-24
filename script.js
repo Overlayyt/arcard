@@ -122,7 +122,7 @@ faceMesh.onResults((results) => {
     }
 
     if (currentMode === 'necklace' && necklaceImg && chinSmooth) {
-      canvasCtx.drawImage(necklaceImg, chinSmooth.x - 100, chinSmooth.y, 300, 150);
+      canvasCtx.drawImage(necklaceImg, chinSmooth.x - 100, chinSmooth.y, 400, 200);
     }
   }
 });
