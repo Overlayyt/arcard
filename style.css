@@ -1,212 +1,237 @@
-const videoElement = document.getElementById('webcam');
-const canvasElement = document.getElementById('overlay');
-const canvasCtx = canvasElement.getContext('2d');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel&family=Poppins&display=swap');
 
-let currentMode = null;
-let earringImg = null;
-let necklaceImg = null;
-let earringSrc = '';
-let necklaceSrc = '';
-let lastSnapshotDataURL = '';
-
-let leftEarPositions = [];
-let rightEarPositions = [];
-let chinPositions = [];
-
-function loadImage(src) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.src = src;
-    img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
-  });
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-function changeEarring(filename) {
-  earringSrc = `earrings/${filename}`;
-  loadImage(earringSrc).then(img => {
-    if (img) earringImg = img;
-  });
+body, html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #0b0b0b;
+  font-family: 'Poppins', sans-serif;
+  color: #fff;
 }
 
-function changeNecklace(filename) {
-  necklaceSrc = `necklaces/${filename}`;
-  loadImage(necklaceSrc).then(img => {
-    if (img) necklaceImg = img;
-  });
+video, canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  z-index: 1;
 }
 
-function selectMode(mode) {
-  currentMode = mode;
-
-  document.querySelectorAll('.options-group').forEach(group => group.style.display = 'none');
-
-  if (mode) {
-    document.getElementById(`${mode}-options`).style.display = 'flex';
-  }
+#branding {
+  position: fixed;
+  top: 21px;
+  width: 100%;
+  text-align: center;
+  z-index: 5;
+  font-family: 'Cinzel', serif;
+  font-size: 24px;
+  color: #ffd700;
 }
 
-function insertJewelryOptions(type, containerId) {
-  const container = document.getElementById(containerId);
-  container.innerHTML = '';
-
-  for (let i = 1; i <= 12; i++) {
-    const filename = `${type}${i}.png`;
-    const btn = document.createElement('button');
-    const img = document.createElement('img');
-    img.src = `${type}s/${filename}`;
-    btn.appendChild(img);
-    btn.onclick = () => {
-      if (type === 'earring') changeEarring(filename);
-      if (type === 'necklace') changeNecklace(filename);
-    };
-    container.appendChild(btn);
-  }
+.camera-icon {
+  width: 30px;
+  height: 30px;
+  vertical-align: middle;
+  margin-right: 8px;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  insertJewelryOptions('earring', 'earring-options');
-  insertJewelryOptions('necklace', 'necklace-options');
-});
-
-function smooth(positions) {
-  if (positions.length === 0) return null;
-  const sum = positions.reduce((acc, pos) => ({ x: acc.x + pos.x, y: acc.y + pos.y }), { x: 0, y: 0 });
-  return { x: sum.x / positions.length, y: sum.y / positions.length };
+#jewelry-mode {
+  position: fixed;
+  bottom: 10px; /* Just below the thumbnails */
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  z-index: 5;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 10px 15px;
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
 }
 
-const faceMesh = new FaceMesh({
-  locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
-});
 
-faceMesh.setOptions({
-  maxNumFaces: 1,
-  refineLandmarks: true,
-  minDetectionConfidence: 0.5,
-  minTrackingConfidence: 0.5
-});
 
-faceMesh.onResults((results) => {
-  canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-
-  if (results.multiFaceLandmarks.length > 0) {
-    const landmarks = results.multiFaceLandmarks[0];
-
-    const left = {
-      x: landmarks[132].x * canvasElement.width,
-      y: landmarks[132].y * canvasElement.height - 20,
-    };
-    const right = {
-      x: landmarks[361].x * canvasElement.width,
-      y: landmarks[361].y * canvasElement.height - 20,
-    };
-    const chin = {
-      x: landmarks[152].x * canvasElement.width,
-      y: landmarks[152].y * canvasElement.height + 10,
-    };
-
-    leftEarPositions.push(left);
-    rightEarPositions.push(right);
-    chinPositions.push(chin);
-    if (leftEarPositions.length > 5) leftEarPositions.shift();
-    if (rightEarPositions.length > 5) rightEarPositions.shift();
-    if (chinPositions.length > 5) chinPositions.shift();
-
-    const leftSmooth = smooth(leftEarPositions);
-    const rightSmooth = smooth(rightEarPositions);
-    const chinSmooth = smooth(chinPositions);
-
-    if (currentMode === 'earring' && earringImg) {
-      if (leftSmooth) canvasCtx.drawImage(earringImg, leftSmooth.x - 60, leftSmooth.y, 100, 100);
-      if (rightSmooth) canvasCtx.drawImage(earringImg, rightSmooth.x - 20, rightSmooth.y, 100, 100);
-    }
-
-    if (currentMode === 'necklace' && necklaceImg && chinSmooth) {
-      canvasCtx.drawImage(necklaceImg, chinSmooth.x - 100, chinSmooth.y, 300, 150);
-    }
-  }
-});
-
-const camera = new Camera(videoElement, {
-  onFrame: async () => {
-    await faceMesh.send({ image: videoElement });
-  },
-  width: 1280,
-  height: 720,
-});
-camera.start();
-
-videoElement.addEventListener('loadedmetadata', () => {
-  canvasElement.width = videoElement.videoWidth;
-  canvasElement.height = videoElement.videoHeight;
-});
-
-function takeSnapshot() {
-  const snapshotCanvas = document.createElement('canvas');
-  const ctx = snapshotCanvas.getContext('2d');
-
-  snapshotCanvas.width = videoElement.videoWidth;
-  snapshotCanvas.height = videoElement.videoHeight;
-  ctx.drawImage(videoElement, 0, 0, snapshotCanvas.width, snapshotCanvas.height);
-
-  if (currentMode === 'earring' && earringImg) {
-    const leftSmooth = smooth(leftEarPositions);
-    const rightSmooth = smooth(rightEarPositions);
-    if (leftSmooth) ctx.drawImage(earringImg, leftSmooth.x - 60, leftSmooth.y, 100, 100);
-    if (rightSmooth) ctx.drawImage(earringImg, rightSmooth.x - 20, rightSmooth.y, 100, 100);
-  }
-
-  if (currentMode === 'necklace' && necklaceImg) {
-    const chinSmooth = smooth(chinPositions);
-    if (chinSmooth) ctx.drawImage(necklaceImg, chinSmooth.x - 100, chinSmooth.y, 300, 150);
-  }
-
-  lastSnapshotDataURL = snapshotCanvas.toDataURL('image/png');
-  document.getElementById('snapshot-preview').src = lastSnapshotDataURL;
-  document.getElementById('snapshot-modal').style.display = 'block';
+#jewelry-mode button {
+  background-color: #ffd700;
+  color: #000;
+  border: none;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
 }
 
-function saveSnapshot() {
-  const link = document.createElement('a');
-  link.href = lastSnapshotDataURL;
-  link.download = `jewelry-tryon-${Date.now()}.png`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+#jewelry-mode button:hover {
+  background-color: #e6c200;
 }
 
-function shareSnapshot() {
-  if (navigator.share) {
-    fetch(lastSnapshotDataURL)
-      .then(res => res.blob())
-      .then(blob => {
-        const file = new File([blob], 'jewelry-tryon.png', { type: 'image/png' });
-        navigator.share({
-          title: 'Jewelry Try-On',
-          text: 'Check out my look!',
-          files: [file]
-        });
-      })
-      .catch(console.error);
-  } else {
-    alert('Sharing not supported on this browser.');
-  }
+.options-group {
+  position: fixed;
+  bottom: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 15px;
+  z-index: 2;
+  background: transparent; /* ✅ no white background */
+  backdrop-filter: none;   /* or keep blur if you like glassy effect */
+  padding: 10px 20px;
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  max-width: 90%;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
-function closeSnapshotModal() {
-  document.getElementById('snapshot-modal').style.display = 'none';
+.options-group::-webkit-scrollbar {
+  display: none;
+}
+.options-group button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease;
 }
 
-function toggleInfoModal() {
-  const modal = document.getElementById('info-modal');
-  modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
-}
-function toggleInfoModal() {
-  const modal = document.getElementById('info-modal');
-  modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
+.options-group button img {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  transition: transform 0.2s ease;
 }
 
-function toggleLocationModal() {
-  const modal = document.getElementById('location-modal');
-  modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
+.options-group button:hover img {
+  border: 2px solid #ffd700;
+  transform: scale(1.05);
+}
+
+#snapshot-btn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: transparent; /* remove yellow background */
+  border: none;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 10;
+}
+
+#snapshot-btn img {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
+
+#info-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: #ffd700;
+  color: #000;
+  border: none;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  z-index: 10;
+}
+
+#info-modal {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 30px;
+  border-radius: 12px;
+  z-index: 9999;
+  max-width: 90%;
+  width: 400px;
+}
+
+.info-content ul {
+  padding-left: 20px;
+  line-height: 1.6;
+}
+
+.close-btn {
+  background-color: #ffd700;
+  color: #000;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 20px;
+}
+
+#snapshot-modal {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  z-index: 9999;
+}
+
+#snapshot-preview {
+  width: 100%;
+  max-width: 400px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.snapshot-buttons button {
+  margin: 5px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #ffd700;
+  color: #000;
+  cursor: pointer;
+}
+#location-btn {
+  position: fixed;
+  bottom: 80px; /* above the info button */
+  right: 20px;
+  background-color: #ffd700;
+  color: #000;
+  border: none;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  z-index: 10;
+}
+
+#location-modal {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.95);
+  color: #000;
+  padding: 20px;
+  border-radius: 12px;
+  z-index: 9999;
+  max-width: 90%;
+  width: 400px;
+  text-align: center;
 }
